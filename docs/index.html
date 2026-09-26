@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tactical-ai-rs | Tactical Influence Maps & Spatial Reasoning in Pure Rust</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #06b6d4;
+      --accent-hover: #0891b2;
+      --threat: #ef4444;
+      --friendly: #3b82f6;
+      --cover: #10b981;
+      --gold: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      font-weight: 600;
+    }
+    h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-left: 1.5rem;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: #fff; }
+    main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1.5rem;
+    }
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .canvas-container {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+    .canvas-toolbar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    canvas {
+      background: #060911;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      cursor: crosshair;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .control-group {
+      margin-bottom: 0.9rem;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .control-label span:last-child {
+      color: var(--accent);
+      font-family: monospace;
+      font-weight: 600;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 5px;
+      border-radius: 3px;
+      background: #374151;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .tab-btn-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .btn {
+      background: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .btn:hover { background: #374151; color: #fff; }
+    .btn.active {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn-action {
+      background: var(--accent);
+      color: #042f2e;
+      border: none;
+      font-weight: 600;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+    .btn-action:hover { background: var(--accent-hover); color: #fff; }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #1f2937;
+      font-size: 0.8rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-name { color: var(--muted); }
+    .stat-val { font-family: monospace; font-weight: 600; color: #fff; }
+    footer {
+      border-top: 1px solid var(--panel-border);
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>tactical-ai-rs</h1>
+      <span class="badge">Pure Rust 2024</span>
+    </div>
+    <div class="nav-links">
+      <a href="https://github.com/bhubbard/tactical-ai-rs" target="_blank">GitHub Repo</a>
+      <a href="https://docs.rs/tactical-ai-rs" target="_blank">Docs.rs</a>
+      <a href="#about">Architecture</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="canvas-container">
+      <div class="canvas-toolbar">
+        <span>Drag Blue (Agent), Red (Enemy), or Gold (Objective). Click empty cells to toggle cover walls.</span>
+        <span id="canvasCoords">X: 0, Y: 0</span>
+      </div>
+      <canvas id="gridCanvas" width="600" height="600"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#3b82f6"></div> Agent</div>
+        <div class="legend-item"><div class="legend-color" style="background:#ef4444"></div> Threat</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f59e0b"></div> Objective</div>
+        <div class="legend-item"><div class="legend-color" style="background:#4b5563"></div> Cover Obstacle</div>
+        <div class="legend-item"><div class="legend-color" style="background:#10b981"></div> Cover Spot</div>
+        <div class="legend-item"><div class="legend-color" style="background:#06b6d4; height: 3px;"></div> Tactical Flank</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f97316; height: 3px; border-top: 1px dashed;"></div> Direct Path</div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="card">
+        <h2>Active Heatmap Layer</h2>
+        <div class="tab-btn-group">
+          <button class="btn active" data-layer="threat">Threat Field</button>
+          <button class="btn" data-layer="tension">Tension (|I_f - I_e|)</button>
+          <button class="btn" data-layer="visibility">Vision / LOS</button>
+          <button class="btn" data-layer="cover">Cover Value</button>
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Threat Radius (R)</span><span id="valThreatRadius">7 cells</span></div>
+          <input type="range" id="sliderThreatRadius" min="3" max="14" value="7">
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Enemy FOV Cone Angle</span><span id="valFovAngle">110°</span></div>
+          <input type="range" id="sliderFovAngle" min="30" max="180" value="110">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Flanking Path Bias</h2>
+        <div class="control-group">
+          <div class="control-label"><span>Threat Cost Weight (w_threat)</span><span id="valWeightThreat">8.0x</span></div>
+          <input type="range" id="sliderWeightThreat" min="0" max="25" step="0.5" value="8">
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Cover Hugging Bonus (w_cover)</span><span id="valWeightCover">2.0x</span></div>
+          <input type="range" id="sliderWeightCover" min="0" max="5" step="0.5" value="2">
+        </div>
+        <div class="control-group">
+          <div class="control-label"><span>Diffusion Rate (κ)</span><span id="valDiffusion">0.15</span></div>
+          <input type="range" id="sliderDiffusion" min="0" max="0.25" step="0.01" value="0.15">
+        </div>
+        <div class="tab-btn-group" style="margin-top: 0.5rem;">
+          <button class="btn" id="btnDiffuseTick">Diffuse 1 Tick</button>
+          <button class="btn" id="btnClearWalls">Clear Walls</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tactical Telemetry</h2>
+        <div class="stat-row">
+          <span class="stat-name">Flank Path Distance:</span>
+          <span class="stat-val" id="statFlankDist">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Flank Threat Exposure:</span>
+          <span class="stat-val" id="statFlankThreat" style="color:#10b981;">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Direct Path Distance:</span>
+          <span class="stat-val" id="statDirectDist">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Direct Threat Exposure:</span>
+          <span class="stat-val" id="statDirectThreat" style="color:#ef4444;">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Identified Cover Spots:</span>
+          <span class="stat-val" id="statCoverCount">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">Nearest Safe Cover:</span>
+          <span class="stat-val" id="statNearestCover">--</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Presets</h2>
+        <div class="tab-btn-group">
+          <button class="btn" id="presetAmbush">Urban Ambush</button>
+          <button class="btn" id="presetChoke">Chokepoint</button>
+          <button class="btn" id="presetCrossfire">Open Crossfire</button>
+          <button class="btn" id="presetReset">Reset Default</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Pure Rust Edition 2024 &bull; Based on Game AI Pro Tactical Influence Maps &bull; MIT / Apache 2.0</p>
+  </footer>
+
+  <script>
+    const GRID_SIZE = 24;
+    const canvas = document.getElementById('gridCanvas');
+    const ctx = canvas.getContext('2d');
+    const cellSize = canvas.width / GRID_SIZE;
+
+    // Simulation state
+    let activeLayer = 'threat';
+    let threatRadius = 7;
+    let fovAngleDeg = 110;
+    let weightThreat = 8.0;
+    let weightCover = 2.0;
+    let diffusionRate = 0.15;
+
+    // Entities in grid coordinates
+    let agent = { x: 3, y: 12 };
+    let threat = { x: 12, y: 12, facing: { x: -1, y: 0 } };
+    let objective = { x: 20, y: 12 };
+
+    // Walls: Set of "x,y" keys
+    let walls = new Set();
+
+    // Influence 2D array
+    let threatMap = Array.from({ length: GRID_SIZE }, () => new Float32Array(GRID_SIZE));
+
+    function initPreset(name) {
+      walls.clear();
+      if (name === 'ambush') {
+        agent = { x: 2, y: 12 };
+        threat = { x: 12, y: 12, facing: { x: -1, y: 0 } };
+        objective = { x: 21, y: 12 };
+        for (let y = 6; y <= 18; y++) {
+          if (y !== 9 && y !== 15) {
+            walls.add(`8,${y}`);
+          }
+        }
+        for (let y = 8; y <= 16; y++) {
+          walls.add(`16,${y}`);
+        }
+      } else if (name === 'choke') {
+        agent = { x: 3, y: 12 };
+        threat = { x: 17, y: 12, facing: { x: -1, y: 0 } };
+        objective = { x: 21, y: 12 };
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (x !== 12) {
+            walls.add(`${x},8`);
+            walls.add(`${x},16`);
+          }
+        }
+      } else if (name === 'crossfire') {
+        agent = { x: 2, y: 21 };
+        threat = { x: 12, y: 12, facing: { x: -0.7, y: 0.7 } };
+        objective = { x: 21, y: 2 };
+        walls.add('7,16'); walls.add('8,16'); walls.add('8,15');
+        walls.add('15,8'); walls.add('16,8'); walls.add('16,7');
+      } else {
+        // default
+        agent = { x: 3, y: 12 };
+        threat = { x: 12, y: 12, facing: { x: -1, y: 0 } };
+        objective = { x: 20, y: 12 };
+        for (let y = 8; y <= 16; y++) {
+          walls.add(`8,${y}`);
+        }
+      }
+      recompute();
+    }
+
+    // Raycast line of sight between cells
+    function hasLOS(x0, y0, x1, y1) {
+      let dx = Math.abs(x1 - x0);
+      let dy = -Math.abs(y1 - y0);
+      let sx = x0 < x1 ? 1 : -1;
+      let sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      let x = x0, y = y0;
+
+      while (true) {
+        if (!(x === x0 && y === y0) && !(x === x1 && y === y1)) {
+          if (walls.has(`${x},${y}`)) return false;
+        }
+        if (x === x1 && y === y1) break;
+        let e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
+      }
+      return true;
+    }
+
+    function recompute() {
+      // 1. Compute Threat Influence
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (walls.has(`${x},${y}`)) {
+            threatMap[y][x] = 0;
+            continue;
+          }
+          let dx = x - threat.x;
+          let dy = y - threat.y;
+          let d = Math.hypot(dx, dy);
+          if (d <= threatRadius) {
+            let falloff = Math.max(0, 1 - d / threatRadius);
+            let unblocked = hasLOS(threat.x, threat.y, x, y);
+            threatMap[y][x] = unblocked ? falloff : falloff * 0.2;
+          } else {
+            threatMap[y][x] = 0;
+          }
+        }
+      }
+
+      // 2. Find Cover Spots
+      let coverSpots = [];
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (walls.has(`${x},${y}`)) continue;
+          // check if adjacent to a wall
+          let hasAdjWall = (
+            walls.has(`${x+1},${y}`) || walls.has(`${x-1},${y}`) ||
+            walls.has(`${x},${y+1}`) || walls.has(`${x},${y-1}`)
+          );
+          if (!hasAdjWall) continue;
+
+          let blocksThreat = !hasLOS(threat.x, threat.y, x, y);
+          let distToAgent = Math.hypot(x - agent.x, y - agent.y);
+          if (blocksThreat) {
+            coverSpots.push({ x, y, dist: distToAgent, exposure: threatMap[y][x] });
+          }
+        }
+      }
+
+      // 3. A* Pathfinding: Direct (0 threat cost) vs Flanking (weighted threat)
+      let directPath = aStar(agent, objective, 0, 0);
+      let flankPath = aStar(agent, objective, weightThreat, weightCover);
+
+      // Update Telemetry
+      document.getElementById('statCoverCount').innerText = `${coverSpots.length} locations`;
+      if (coverSpots.length > 0) {
+        coverSpots.sort((a, b) => a.dist - b.dist);
+        document.getElementById('statNearestCover').innerText = `(${coverSpots[0].x}, ${coverSpots[0].y}) [${coverSpots[0].dist.toFixed(1)}c]`;
+      } else {
+        document.getElementById('statNearestCover').innerText = 'None';
+      }
+
+      if (directPath) {
+        document.getElementById('statDirectDist').innerText = `${directPath.dist.toFixed(1)} cells`;
+        document.getElementById('statDirectThreat').innerText = `${(directPath.avgThreat * 100).toFixed(0)}% avg`;
+      }
+      if (flankPath) {
+        document.getElementById('statFlankDist').innerText = `${flankPath.dist.toFixed(1)} cells`;
+        document.getElementById('statFlankThreat').innerText = `${(flankPath.avgThreat * 100).toFixed(0)}% avg`;
+      }
+
+      draw(directPath, flankPath, coverSpots);
+    }
+
+    function aStar(start, goal, wThreat, wCover) {
+      let openSet = [{ x: start.x, y: start.y, g: 0, f: Math.hypot(goal.x - start.x, goal.y - start.y) }];
+      let cameFrom = new Map();
+      let gScore = new Map();
+      let key = (p) => `${p.x},${p.y}`;
+      gScore.set(key(start), 0);
+
+      while (openSet.length > 0) {
+        openSet.sort((a, b) => a.f - b.f);
+        let curr = openSet.shift();
+
+        if (curr.x === goal.x && curr.y === goal.y) {
+          let path = [curr];
+          let cKey = key(curr);
+          while (cameFrom.has(cKey)) {
+            let prev = cameFrom.get(cKey);
+            path.push(prev);
+            cKey = key(prev);
+          }
+          path.reverse();
+
+          let totalThreat = 0;
+          for (let p of path) {
+            totalThreat += threatMap[p.y][p.x];
+          }
+          return {
+            path,
+            dist: path.length,
+            avgThreat: totalThreat / path.length
+          };
+        }
+
+        let neighbors = [
+          { x: curr.x + 1, y: curr.y }, { x: curr.x - 1, y: curr.y },
+          { x: curr.x, y: curr.y + 1 }, { x: curr.x, y: curr.y - 1 },
+          { x: curr.x + 1, y: curr.y + 1 }, { x: curr.x - 1, y: curr.y - 1 },
+          { x: curr.x + 1, y: curr.y - 1 }, { x: curr.x - 1, y: curr.y + 1 }
+        ];
+
+        for (let n of neighbors) {
+          if (n.x < 0 || n.x >= GRID_SIZE || n.y < 0 || n.y >= GRID_SIZE) continue;
+          if (walls.has(`${n.x},${n.y}`)) continue;
+
+          let stepDist = (n.x !== curr.x && n.y !== curr.y) ? 1.414 : 1.0;
+          let threatVal = threatMap[n.y][n.x];
+          let isCover = (
+            walls.has(`${n.x+1},${n.y}`) || walls.has(`${n.x-1},${n.y}`) ||
+            walls.has(`${n.x},${n.y+1}`) || walls.has(`${n.x},${n.y-1}`)
+          );
+          let coverBonus = isCover ? wCover : 0;
+          let stepCost = Math.max(0.01, stepDist + wThreat * threatVal - coverBonus);
+
+          let tentativeG = (gScore.get(key(curr)) || 0) + stepCost;
+          let nKey = key(n);
+          if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
+            cameFrom.set(nKey, curr);
+            gScore.set(nKey, tentativeG);
+            let h = Math.hypot(goal.x - n.x, goal.y - n.y);
+            openSet.push({ x: n.x, y: n.y, g: tentativeG, f: tentativeG + h });
+          }
+        }
+      }
+      return null;
+    }
+
+    function draw(directPath, flankPath, coverSpots) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid & Heatmap
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          let px = x * cellSize;
+          let py = y * cellSize;
+
+          if (walls.has(`${x},${y}`)) {
+            ctx.fillStyle = '#374151';
+            ctx.fillRect(px, py, cellSize, cellSize);
+            ctx.strokeStyle = '#4b5563';
+            ctx.strokeRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
+            continue;
+          }
+
+          let val = 0;
+          if (activeLayer === 'threat') {
+            val = threatMap[y][x];
+            if (val > 0) {
+              ctx.fillStyle = `rgba(239, 68, 68, ${val * 0.75})`;
+              ctx.fillRect(px, py, cellSize, cellSize);
+            }
+          } else if (activeLayer === 'tension') {
+            let distA = Math.hypot(x - agent.x, y - agent.y);
+            let friendlyVal = Math.max(0, 1 - distA / 8);
+            let enemyVal = threatMap[y][x];
+            val = Math.abs(friendlyVal - enemyVal);
+            if (val > 0) {
+              ctx.fillStyle = `rgba(168, 85, 247, ${val * 0.7})`;
+              ctx.fillRect(px, py, cellSize, cellSize);
+            }
+          } else if (activeLayer === 'visibility') {
+            let vis = hasLOS(threat.x, threat.y, x, y) && Math.hypot(x - threat.x, y - threat.y) <= threatRadius;
+            if (vis) {
+              ctx.fillStyle = `rgba(234, 179, 8, 0.25)`;
+              ctx.fillRect(px, py, cellSize, cellSize);
+            }
+          }
+
+          // Subtle grid line
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+          ctx.strokeRect(px, py, cellSize, cellSize);
+        }
+      }
+
+      // Draw Vision Cone Arc for Enemy
+      ctx.save();
+      let tpx = (threat.x + 0.5) * cellSize;
+      let tpy = (threat.y + 0.5) * cellSize;
+      let radiusPx = threatRadius * cellSize;
+      let halfFov = (fovAngleDeg * Math.PI / 180) / 2;
+      let baseAngle = Math.atan2(threat.facing.y, threat.facing.x);
+
+      ctx.beginPath();
+      ctx.moveTo(tpx, tpy);
+      ctx.arc(tpx, tpy, radiusPx, baseAngle - halfFov, baseAngle + halfFov);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
+      ctx.fill();
+      ctx.restore();
+
+      // Draw Identified Cover Spots
+      for (let cs of coverSpots) {
+        let cx = (cs.x + 0.5) * cellSize;
+        let cy = (cs.y + 0.5) * cellSize;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cellSize * 0.35, 0, Math.PI * 2);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.3)';
+        ctx.fill();
+      }
+
+      // Draw Direct Path (Orange Dashed)
+      if (directPath && directPath.path.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 2;
+        let p0 = directPath.path[0];
+        ctx.moveTo((p0.x + 0.5) * cellSize, (p0.y + 0.5) * cellSize);
+        for (let i = 1; i < directPath.path.length; i++) {
+          let p = directPath.path[i];
+          ctx.lineTo((p.x + 0.5) * cellSize, (p.y + 0.5) * cellSize);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw Flanking Tactical Path (Cyan Solid Glow)
+      if (flankPath && flankPath.path.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 3.5;
+        ctx.shadowColor = '#06b6d4';
+        ctx.shadowBlur = 8;
+        let p0 = flankPath.path[0];
+        ctx.moveTo((p0.x + 0.5) * cellSize, (p0.y + 0.5) * cellSize);
+        for (let i = 1; i < flankPath.path.length; i++) {
+          let p = flankPath.path[i];
+          ctx.lineTo((p.x + 0.5) * cellSize, (p.y + 0.5) * cellSize);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw Objective
+      let opx = (objective.x + 0.5) * cellSize;
+      let opy = (objective.y + 0.5) * cellSize;
+      ctx.beginPath();
+      ctx.arc(opx, opy, cellSize * 0.38, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw Threat
+      ctx.beginPath();
+      ctx.arc(tpx, tpy, cellSize * 0.42, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444';
+      ctx.fill();
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Threat Facing Pointer
+      ctx.beginPath();
+      ctx.moveTo(tpx, tpy);
+      ctx.lineTo(tpx + threat.facing.x * cellSize * 0.7, tpy + threat.facing.y * cellSize * 0.7);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw Agent
+      let apx = (agent.x + 0.5) * cellSize;
+      let apy = (agent.y + 0.5) * cellSize;
+      ctx.beginPath();
+      ctx.arc(apx, apy, cellSize * 0.4, 0, Math.PI * 2);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fill();
+      ctx.strokeStyle = '#93c5fd';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Interaction handlers
+    let dragging = null;
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+      if (x === agent.x && y === agent.y) {
+        dragging = 'agent';
+      } else if (x === threat.x && y === threat.y) {
+        dragging = 'threat';
+      } else if (x === objective.x && y === objective.y) {
+        dragging = 'objective';
+      } else {
+        let key = `${x},${y}`;
+        if (walls.has(key)) {
+          walls.delete(key);
+        } else {
+          walls.add(key);
+        }
+        recompute();
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      if (mx >= 0 && mx < canvas.width && my >= 0 && my < canvas.height) {
+        let gx = Math.floor(mx / cellSize);
+        let gy = Math.floor(my / cellSize);
+        document.getElementById('canvasCoords').innerText = `X: ${gx}, Y: ${gy}`;
+      }
+
+      if (!dragging) return;
+      let gx = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(mx / cellSize)));
+      let gy = Math.max(0, Math.min(GRID_SIZE - 1, Math.floor(my / cellSize)));
+
+      if (dragging === 'agent') {
+        agent.x = gx; agent.y = gy;
+      } else if (dragging === 'threat') {
+        threat.x = gx; threat.y = gy;
+      } else if (dragging === 'objective') {
+        objective.x = gx; objective.y = gy;
+      }
+      recompute();
+    });
+
+    window.addEventListener('mouseup', () => { dragging = null; });
+
+    // UI Controls
+    document.querySelectorAll('.tab-btn-group button[data-layer]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn-group button[data-layer]').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        activeLayer = e.target.dataset.layer;
+        recompute();
+      });
+    });
+
+    document.getElementById('sliderThreatRadius').addEventListener('input', (e) => {
+      threatRadius = parseInt(e.target.value);
+      document.getElementById('valThreatRadius').innerText = `${threatRadius} cells`;
+      recompute();
+    });
+
+    document.getElementById('sliderFovAngle').addEventListener('input', (e) => {
+      fovAngleDeg = parseInt(e.target.value);
+      document.getElementById('valFovAngle').innerText = `${fovAngleDeg}°`;
+      recompute();
+    });
+
+    document.getElementById('sliderWeightThreat').addEventListener('input', (e) => {
+      weightThreat = parseFloat(e.target.value);
+      document.getElementById('valWeightThreat').innerText = `${weightThreat.toFixed(1)}x`;
+      recompute();
+    });
+
+    document.getElementById('sliderWeightCover').addEventListener('input', (e) => {
+      weightCover = parseFloat(e.target.value);
+      document.getElementById('valWeightCover').innerText = `${weightCover.toFixed(1)}x`;
+      recompute();
+    });
+
+    document.getElementById('sliderDiffusion').addEventListener('input', (e) => {
+      diffusionRate = parseFloat(e.target.value);
+      document.getElementById('valDiffusion').innerText = `${diffusionRate.toFixed(2)}`;
+    });
+
+    document.getElementById('btnDiffuseTick').addEventListener('click', () => {
+      // Laplacian step
+      let next = Array.from({ length: GRID_SIZE }, () => new Float32Array(GRID_SIZE));
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (walls.has(`${x},${y}`)) continue;
+          let sum = 0, count = 0;
+          let deltas = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          for (let [dx, dy] of deltas) {
+            let nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && !walls.has(`${nx},${ny}`)) {
+              sum += threatMap[ny][nx];
+              count++;
+            }
+          }
+          let laplacian = count > 0 ? (sum - count * threatMap[y][x]) : 0;
+          next[y][x] = Math.max(0, threatMap[y][x] * 0.95 + diffusionRate * laplacian);
+        }
+      }
+      threatMap = next;
+      draw(aStar(agent, objective, 0, 0), aStar(agent, objective, weightThreat, weightCover), []);
+    });
+
+    document.getElementById('btnClearWalls').addEventListener('click', () => {
+      walls.clear();
+      recompute();
+    });
+
+    document.getElementById('presetAmbush').addEventListener('click', () => initPreset('ambush'));
+    document.getElementById('presetChoke').addEventListener('click', () => initPreset('choke'));
+    document.getElementById('presetCrossfire').addEventListener('click', () => initPreset('crossfire'));
+    document.getElementById('presetReset').addEventListener('click', () => initPreset('default'));
+
+    // Initial load
+    initPreset('default');
+  </script>
+</body>
+</html>
