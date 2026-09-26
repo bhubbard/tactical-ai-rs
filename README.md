@@ -1,12 +1,12 @@
 # tactical-ai-rs
 
-[![GitHub Pages](https://img.shields.io/badge/Demo-Live%20Sandbox-06b6d4?style=flat-square&logo=github)](https://bhubbard.github.io/tactical-ai-rs/)
+[![GitHub Pages](https://img.shields.io/badge/Demo-Live%20Sandbox-06b6d4?style=flat-square&logo=github)](https://code.brandonhubbard.com/tactical-ai-rs/)
 [![Rust](https://img.shields.io/badge/Rust-Edition%202024-orange?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/License-MIT%20%2F%20Apache--2.0-blue?style=flat-square)](LICENSE)
 
 Pure Rust implementation of **Tactical Influence Maps**, **Spatial Reasoning**, **Cover & Vantage Point Analysis**, and **Influence-Biased Flanking Pathfinding**, based on *Game AI Pro: Collected Wisdom of Game AI Professionals*.
 
-👉 **[Try the Interactive 2D Tactical Grid Sandbox](https://bhubbard.github.io/tactical-ai-rs/)**
+👉 **[Try the Interactive 2D Tactical Grid Sandbox](https://code.brandonhubbard.com/tactical-ai-rs/)**
 
 ---
 
