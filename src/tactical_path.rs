@@ -89,6 +89,7 @@ impl PartialOrd for AStarNode {
 }
 
 /// Tactical A* and Dijkstra pathfinder utilizing influence maps.
+#[derive(Debug)]
 pub struct FlankingPathfinder<'a> {
     pub grid: &'a Grid2D<CellType>,
     pub influence: Option<&'a InfluenceMap2D>,

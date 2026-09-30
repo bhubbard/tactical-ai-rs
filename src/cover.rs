@@ -50,6 +50,7 @@ impl Default for CoverWeights {
 }
 
 /// Evaluator for identifying and ranking tactical cover and vantage positions.
+#[derive(Debug)]
 pub struct CoverFinder<'a> {
     pub grid: &'a Grid2D<CellType>,
     pub influence_map: Option<&'a InfluenceMap2D>,
